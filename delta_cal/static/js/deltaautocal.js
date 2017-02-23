@@ -31,12 +31,16 @@ $(function () {
         self.printerType = ko.observable("");
         self.statusMessage = ko.observable("");
         self.statusCalResult = ko.observable("");
+        self.statusZProbeRepeatability = ko.observable("");
 
         // Delta Calibration variables.
         self.sentM114 = false;
         self.probingActive = false;
         self.probeCount = 0;  // so we can keep track of what probe iteration we're on.
         self.commandText = "";  // where the commands to fix things will go for display purposes.
+
+        self.checkZProbeRepeatabilityActive = false;
+        self.checkZProbeRepeatabilityCount = 0;
 
         self.calibrationComplete = false;
 
@@ -56,6 +60,8 @@ $(function () {
         var yBedProbePoints = [];
         var zBedProbePoints = [];
         var zProbeBedDistance = 0;
+
+        var zProbeRepeatabilityResult = [];
 
         // these are used soley to populate those bits used by the setParameters() routine.
         var oldRodLength = 0;
@@ -774,7 +780,7 @@ $(function () {
                   self.statusMessage(self.statusMessage() + "M114 Result: " + line);
                   self.sentM114 = false;
                 }
-              }
+              } 
               var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):(\d+.\d+).*/;
               if (self.probingActive && zProbeRegex.test(line)) {
                 var zCoord = parseFloat(line.replace(zProbeRegex, "$2"));
@@ -788,6 +794,33 @@ $(function () {
                 self.probeCount++;
                 if (self.probeCount == numPoints) {
                   startDeltaCalcEngine();  // doooo eeeeeeet!
+                }
+              }
+              if (self.checkZProbeRepeatabilityActive && zProbeRegex.test(line)) {
+                var zCoord = parseFloat(line.replace(zProbeRegex, "$2"));
+                if (!self.isSeeMeCNCPrinter()) {
+                  zCoord -= zProbeBedDistance;
+                }
+                var probeStatus = "Probe #" + parseInt(self.checkZProbeRepeatabilityCount + 1) + " value: " + zCoord.toFixed(3);
+                self.statusZProbeRepeatability(Array(self.checkZProbeRepeatabilityCount + 2).join("*") + " [" + probeStatus + "]");
+                console.log(probeStatus);
+                zProbeRepeatabilityResult[self.checkZProbeRepeatabilityCount] = zCoord;
+                self.checkZProbeRepeatabilityCount++;
+                if (self.checkZProbeRepeatabilityCount == 5) {
+                  var min, max;
+                  for (var i = 0; i < zProbeRepeatabilityResult.length; i++) {
+                    console.log("zProbeRepeatabilityResult["+i+"]="+zProbeRepeatabilityResult[i]);
+                    if (i == 0) {
+                      min = zProbeRepeatabilityResult[i];
+                      max = zProbeRepeatabilityResult[i];
+                    } else {
+                      min = Math.min(min, zProbeRepeatabilityResult[i]);
+                      max = Math.max(max, zProbeRepeatabilityResult[i]);
+                    }
+                  }
+                  self.checkZProbeRepeatabilityCount = 0;
+                  self.checkZProbeRepeatabilityActive = false;
+                  self.statusZProbeRepeatability((max - min).toFixed(3) + " (max=" + max.toFixed(3) + ", min=" + min.toFixed(3) + ')');
                 }
               }
             });
@@ -854,6 +887,18 @@ $(function () {
         //     self.control.sendCustomCommand({ command: cmd });
         //   }
         // }
+
+        self.checkZProbeRepeatability = function () {
+          console.log("checkZProbeRepeatability...");
+          setParameters();
+          self.checkZProbeRepeatabilityActive = true;
+          self.control.sendCustomCommand({ command: "G28" });
+          var strCommandBuffer = [];
+          for (var i = 0; i < 5; i++) {
+            strCommandBuffer.push("G30");
+          }
+          self.control.sendCustomCommand({ commands: strCommandBuffer });
+        }
     }
 
     OCTOPRINT_VIEWMODELS.push([ DeltaAutoCalViewModel, ["controlViewModel", "connectionViewModel"], "#settings_plugin_delta_cal" ]);
