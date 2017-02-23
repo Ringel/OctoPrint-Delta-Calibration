@@ -24,6 +24,7 @@ $(function () {
         // externally via the jinja2 file.
         self.isRepetierFirmware = ko.observable(false);
         self.isSeeMeCNCPrinter = ko.observable(false);
+        self.isEepromLoaded = ko.observable(false);
 
         self.eepromData = ko.observableArray([]);
 
@@ -54,6 +55,7 @@ $(function () {
         var xBedProbePoints = [];
         var yBedProbePoints = [];
         var zBedProbePoints = [];
+        var zProbeBedDistance = 0;
 
         // these are used soley to populate those bits used by the setParameters() routine.
         var oldRodLength = 0;
@@ -377,7 +379,7 @@ $(function () {
 
         function setParameters() {
 
-          stepsPerMM = 80;
+          //stepsPerMM = 80;
           switch (self.machineType) {
             case SMC_ORION:
               bedRadius = 80;
@@ -404,6 +406,22 @@ $(function () {
           var eepromData = self.eepromData();
           _.each(eepromData, function (data) {
             switch (data.position) {
+              case "11":   // Steps per mm
+                stepsPerMM = parseFloat(data.value);
+                console.log("Steps per mm: " + stepsPerMM);
+                break;
+
+              case "925":   // Max printable radius [mm]
+                var printableRadius = parseFloat(data.value);
+                bedRadius = printableRadius * 0.9; // HACK!
+                console.log("Max printable radius [mm]: " + printableRadius + ", decreased to: " + bedRadius);
+                break;
+
+              case "929":   // Max. z-probe - bed dist. [mm]
+                zProbeBedDistance = parseFloat(data.value);
+                console.log("Max. z-probe - bed dist. [mm]: " + zProbeBedDistance);
+                break;
+
               case "153":   // Max Z height
                 oldHomedHeight = parseFloat(data.value);
                 console.log("Starting Homed Height: " + oldHomedHeight);
@@ -560,6 +578,7 @@ $(function () {
               self.statusMessage("Success, changes written to EEPROM.");
               self.control.sendCustomCommand({ command: "G28" });
               console.log(self.statusMessage());
+              self.isEepromLoaded(false);
             }else{
               self.statusMessage("New calibration is not measureably better than the old - keeping the old calibration");
             }
@@ -756,11 +775,16 @@ $(function () {
                   self.sentM114 = false;
                 }
               }
-              if (self.probingActive && line.includes("PROBE-ZOFFSET")) {
-                var zCoord = line.split(":");
-                self.statusMessage(self.statusMessage() + ".");
-                console.log(" Probe #" + parseInt(self.probeCount + 1) + " value: " + parseFloat(zCoord[2]));
-                zBedProbePoints[self.probeCount] = -parseFloat(zCoord[2]);
+              var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):(\d+.\d+).*/;
+              if (self.probingActive && zProbeRegex.test(line)) {
+                var zCoord = parseFloat(line.replace(zProbeRegex, "$2"));
+                if (!self.isSeeMeCNCPrinter()) {
+                  zCoord -= zProbeBedDistance;
+                }
+                var probeStatus = "Probe #" + parseInt(self.probeCount + 1) + " value: " + zCoord.toFixed(3);
+                self.statusMessage(Array(self.probeCount + 2).join("*") + " [" + probeStatus + "]");
+                console.log(probeStatus);
+                zBedProbePoints[self.probeCount] = -zCoord;
                 self.probeCount++;
                 if (self.probeCount == numPoints) {
                   startDeltaCalcEngine();  // doooo eeeeeeet!
@@ -796,13 +820,14 @@ $(function () {
           }
           else {
             cmd += " S" + value;
-            //console.log("Sent EEPROM command: " + cmd);
+            console.log("Sent EEPROM command: " + cmd);
             self.control.sendCustomCommand({ command: cmd });
           }
         }
         self.loadEEProm = function () {
           self.eepromData([]);
           self.readEEPROMData();
+          self.isEepromLoaded(true);
         };
 
         self.showCoords = function () {
