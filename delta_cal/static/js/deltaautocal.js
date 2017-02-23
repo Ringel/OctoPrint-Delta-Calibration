@@ -525,9 +525,9 @@ $(function () {
           self.control.sendCustomCommand({ command: "G28" }); // home first!
           // build it all right now.
           var strCommandBuffer = [];
-
+          var probeHeight = self.isSeeMeCNCPrinter() ? DEFAULT_PROBE_HEIGHT : zProbeBedDistance;
           for(var x = 0; x < numPoints; x++) {
-            strCommandBuffer.push("G0 X"  + xBedProbePoints[x] + " Y" + yBedProbePoints[x] + " Z" + DEFAULT_PROBE_HEIGHT + " F6500");
+            strCommandBuffer.push("G0 X"  + xBedProbePoints[x] + " Y" + yBedProbePoints[x] + " Z" + probeHeight + " F6500");
             strCommandBuffer.push("G30");
           }
           self.control.sendCustomCommand({ commands: strCommandBuffer});
