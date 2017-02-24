@@ -1,6 +1,6 @@
 <h4>Delta Autocalibration Plugin</h4>
 This plugin will calibrate a delta configuration printer using David Crocker's "least squares" calibration algorithm.<br>
-Note that this is only designed to operate with the SeeMeCNC fork of Repetier Firmware.<br><br>
+Note that this is initially designed to operate with the SeeMeCNC fork of Repetier Firmware. Now stock Repetier Firmware is also supported, but <span style="color: red">very experimental. Be warned at your own risk!</span><br><br>
 Usage: Click "Load EEPROM" to load the EEPROM into the calibration software and then click "Begin Delta Calibration".<br>
 You'll need to click "Load EEPROM" before each click of "Begin Delta Calibration".<br><br>
 <strong>Connection Status: <span style="color: green" data-bind="visible: isConnected()">connected</span>
@@ -36,6 +36,7 @@ You'll need to click "Load EEPROM" before each click of "Begin Delta Calibration
     <br><br><strong>Calibration Result: </strong><span data-bind="text: statusCalResult"></span><br>
 
 </form>
+<hr/>
 <h5>Check Z-Probe Repeatability</h5>
     <button data-bind="enable: isRepetierFirmware && isConnected() && isEepromLoaded, click: checkZProbeRepeatability">{{ _('Check') }}</button>
     <br><br><strong>Repeatability Check Result: </strong><span data-bind="text: statusZProbeRepeatability"></span><br>
