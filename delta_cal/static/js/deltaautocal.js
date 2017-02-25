@@ -32,6 +32,7 @@ $(function () {
         self.statusMessage = ko.observable("");
         self.statusCalResult = ko.observable("");
         self.statusZProbeRepeatability = ko.observable("");
+        self.checkZProbeRepeatabilityCountOption = ko.observable();
 
         // Delta Calibration variables.
         self.sentM114 = false;
@@ -790,6 +791,11 @@ $(function () {
                 var probeStatus = "Probe #" + parseInt(self.probeCount + 1) + " value: " + zCoord.toFixed(3);
                 self.statusMessage(Array(self.probeCount + 2).join("*") + " [" + probeStatus + "]");
                 console.log(probeStatus);
+                
+                
+                
+                
+                
                 zBedProbePoints[self.probeCount] = -zCoord;
                 self.probeCount++;
                 if (self.probeCount == numPoints) {
@@ -806,7 +812,7 @@ $(function () {
                 console.log(probeStatus);
                 zProbeRepeatabilityResult[self.checkZProbeRepeatabilityCount] = zCoord;
                 self.checkZProbeRepeatabilityCount++;
-                if (self.checkZProbeRepeatabilityCount == 5) {
+                if (self.checkZProbeRepeatabilityCount == self.checkZProbeRepeatabilityCountOption()) {
                   var min, max;
                   for (var i = 0; i < zProbeRepeatabilityResult.length; i++) {
                     console.log("zProbeRepeatabilityResult["+i+"]="+zProbeRepeatabilityResult[i]);
@@ -889,12 +895,12 @@ $(function () {
         // }
 
         self.checkZProbeRepeatability = function () {
-          console.log("checkZProbeRepeatability...");
+          console.log("checkZProbeRepeatability (" + self.checkZProbeRepeatabilityCountOption() + " times)");
           setParameters();
           self.checkZProbeRepeatabilityActive = true;
           self.control.sendCustomCommand({ command: "G28" });
           var strCommandBuffer = [];
-          for (var i = 0; i < 5; i++) {
+          for (var i = 0; i < self.checkZProbeRepeatabilityCountOption(); i++) {
             strCommandBuffer.push("G30");
           }
           self.control.sendCustomCommand({ commands: strCommandBuffer });

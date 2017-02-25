@@ -31,13 +31,13 @@ You'll need to click "Load EEPROM" before each click of "Begin Delta Calibration
     <br>
     <button data-bind="enable: isRepetierFirmware, click: loadEEProm">{{ _('Load EEprom') }}</button>
     <button data-bind="enable: isRepetierFirmware() && isConnected() && isEepromLoaded, click: beginDeltaCal">{{ _('Begin Delta Calibration') }}</button>
-	
     <br><br><strong>Progress: </strong><span data-bind="text: statusMessage"></span><br>
     <br><br><strong>Calibration Result: </strong><span data-bind="text: statusCalResult"></span><br>
 
 </form>
 <hr/>
 <h5>Check Z-Probe Repeatability</h5>
+    Number of Probes: <select data-bind="options: [5,10,15], value: checkZProbeRepeatabilityCountOption"></select>
     <button data-bind="enable: isRepetierFirmware && isConnected() && isEepromLoaded, click: checkZProbeRepeatability">{{ _('Check') }}</button>
     <br><br><strong>Repeatability Check Result: </strong><span data-bind="text: statusZProbeRepeatability"></span><br>
 
