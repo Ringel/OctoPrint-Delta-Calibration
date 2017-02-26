@@ -1,43 +1,106 @@
-<h4>Delta Autocalibration Plugin</h4>
-This plugin will calibrate a delta configuration printer using David Crocker's "least squares" calibration algorithm.<br>
-Note that this is initially designed to operate with the SeeMeCNC fork of Repetier Firmware. Now stock Repetier Firmware is also supported, but <span style="color: red">very experimental. Be warned at your own risk!</span><br><br>
-Usage: Click "Load EEPROM" to load the EEPROM into the calibration software and then click "Begin Delta Calibration".<br>
-You'll need to click "Load EEPROM" before each click of "Begin Delta Calibration".<br><br>
-<strong>Connection Status: <span style="color: green" data-bind="visible: isConnected()">connected</span>
-<span style="color: red" data-bind="visible: !isConnected()">not connected</span></strong><br>
+<h4>Delta Least-Squares Calibration</h4>
+This plugin will calibrate a delta configuration printer using David Crocker's "least squares" calibration algorithm.
+<br>
+Note that this is initially designed to operate with the SeeMeCNC fork of Repetier Firmware. Now stock Repetier Firmware is also supported, but <span style="color: red">very experimental. Be warned at your own risk!</span>
+<br>
+<br>
+Usage: Click 'Load EEPROM' to load the EEPROM into the calibration software and then click 'Begin Delta Calibration'.
+You'll need to click 'Load EEPROM' before each click of 'Begin Delta Calibration'.
+<br>
+<br>
+Status: <span style="color: green" data-bind="visible: isConnected()">connected.</span>
+<span style="color: red" data-bind="visible: !isConnected()">not connected.</span>
 <span data-bind="visible: isConnected() && isSeeMeCNCPrinter()">
-	Your machine is a SeeMeCNC <span data-bind="text: printerType"></span> 3D printer!<br>
+    Your machine is a SeeMeCNC <span data-bind="text: printerType"></span> 3D printer.
 </span>
 <span data-bind="visible: isConnected() && !isSeeMeCNCPrinter()">
-	Your machine is <span style="color: red">not</span> a SeeMeCNC 3D printer!<br>
+    Your machine is <span style="color: red">not</span> a SeeMeCNC 3D printer.
 </span>
 <br>
 <br>
 
-
 <form class="form-horizontal">
-<!--
-    <table>
-        <tr>
-            <td>Number of Probe Points: </td>
-            <td><select data-bind="options: [4,7,10], value: probePoints"></select></td>
-        </tr>
-        <tr>
-            <td>Number of Calbration Factors: </td>
-            <td><select data-bind="options: [4,5,6,7], value: calibrationFactors"></select></td>
-        </tr>    
-    </table>
--->
-    <br>
-    <button data-bind="enable: isRepetierFirmware, click: loadEEProm">{{ _('Load EEprom') }}</button>
-    <button data-bind="enable: isRepetierFirmware() && isConnected() && isEepromLoaded, click: beginDeltaCal">{{ _('Begin Delta Calibration') }}</button>
-    <br><br><strong>Progress: </strong><span data-bind="text: statusMessage"></span><br>
-    <br><br><strong>Calibration Result: </strong><span data-bind="text: statusCalResult"></span><br>
-
+    <button data-bind="enable: isRepetierFirmware, click: loadEEProm" class="btn">{{ _('Load EEprom') }}</button>
+    <button data-bind="enable: isRepetierFirmware && isConnected && isEepromLoaded, click: beginDeltaCal" class="btn btn-primary">{{ _('Begin Delta Calibration') }}</button>
+    <div class="btn-group input-append">
+        <button type="submit" data-bind="click: checkZProbeRepeatability, enable: isRepetierFirmware && isConnected && isEepromLoaded" class="btn">{{ _('Check Z-Probe Repeatability') }}</button>
+        <input type="number" class="input-mini text-right" data-bind="value: checkZProbeRepeatabilityCountOption, enable: isRepetierFirmware && isConnected && isEepromLoaded">
+        <span class="add-on">probes</span>
+    </div>
 </form>
-<hr/>
-<h5>Check Z-Probe Repeatability</h5>
-    Number of Probes: <select data-bind="options: [5,10,15], value: checkZProbeRepeatabilityCountOption"></select>
-    <button data-bind="enable: isRepetierFirmware && isConnected() && isEepromLoaded, click: checkZProbeRepeatability">{{ _('Check') }}</button>
-    <br><br><strong>Repeatability Check Result: </strong><span data-bind="text: statusZProbeRepeatability"></span><br>
+
+<span data-bind="visible: statusCalResult">
+    <h5>Delta Calibration Result:</h5>
+    <table data-bind="with: statusCalResult" class="table table-striped table-hover table-condensed" style="table-layout: fixed; width: 90%">
+        <thead>
+            <tr>
+                <th>Factors</th>
+                <th>Points</th>
+                <th>Deviation before</th>
+                <th>Deviation after</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td data-bind="text: numFactors"></td>
+                <td data-bind="text: numPoints"></td>
+                <td data-bind="text: oldDeviation"></td>
+                <td data-bind="text: newDeviation"></td>
+            </tr>
+        </tbody>
+    </table>
+</span>
+<table data-bind="visible: zBedProbePointStatus().length > 0" class="table table-bordered table-hover table-condensed" style="table-layout: fixed; width: 90%; margin-top: 20px">
+    <thead>
+        <tr>
+            <th>Probe</th>
+            <th>z-height</th>
+            <th>x</th>
+            <th>y</th>
+        </tr>
+    </thead>
+    <tbody data-bind="foreach: zBedProbePointStatus">
+        <tr>
+            <td data-bind="text: probe"></td>
+            <td data-bind="text: zCoord"></td>
+            <td data-bind="text: xCoord"></td>
+            <td data-bind="text: yCoord"></td>
+        </tr>
+    </tbody>
+</table>
+
+
+<span data-bind="visible: checkZProbeRepeatabilityResult">
+    <h5>Repeatability Check Result:</h5>
+    <table data-bind="with: checkZProbeRepeatabilityResult" class="table table-striped table-hover table-condensed" style="table-layout: fixed; width: 90%">
+        <thead>
+            <tr>
+                <th>Max deviation</th>
+                <th>Min probe value</th>
+                <th>Max probe value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td data-bind="text: maxDeviation" style="font-weight: bold;"></td>
+                <td data-bind="text: min"></td>
+                <td data-bind="text: max"></td>
+            </tr>
+        </tbody>
+    </table>
+</span>
+<table data-bind="visible: checkZProbeRepeatabilityStatus().length > 0" class="table table-bordered table-hover table-condensed" style="table-layout: fixed; width: 90%; margin-top: 20px">
+    <thead>
+        <tr>
+            <th>Probe</th>
+            <th>z-height</th>
+        </tr>
+    </thead>
+    <tbody data-bind="foreach: checkZProbeRepeatabilityStatus">
+        <tr>
+            <td data-bind="text: probe"></td>
+            <td data-bind="text: zCoord"></td>
+        </tr>
+    </tbody>
+</table>
 

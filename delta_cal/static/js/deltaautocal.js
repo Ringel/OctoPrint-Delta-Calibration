@@ -30,9 +30,11 @@ $(function () {
 
         self.printerType = ko.observable("");
         self.statusMessage = ko.observable("");
-        self.statusCalResult = ko.observable("");
-        self.statusZProbeRepeatability = ko.observable("");
-        self.checkZProbeRepeatabilityCountOption = ko.observable();
+        self.statusCalResult = ko.observable(null);
+        self.zBedProbePointStatus = ko.observableArray();
+        self.checkZProbeRepeatabilityResult = ko.observable(null);
+        self.checkZProbeRepeatabilityStatus = ko.observableArray();
+        self.checkZProbeRepeatabilityCountOption = ko.observable(10);
 
         // Delta Calibration variables.
         self.sentM114 = false;
@@ -47,6 +49,8 @@ $(function () {
 
         var oldDeviation = 0.0;
         var newDeviation = 0.0;
+        
+        var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):(\d+.\d+).*/; // SeeMeCNC and stock Repetier
 
         // dc42 code
         var initialPoints = 10; // Was 7.  If I'd wanted it changed, I would have changed it myself!
@@ -519,7 +523,10 @@ $(function () {
         self.beginDeltaCal = function () {
           numPoints = initialPoints;  // these should be configurable at some point.
           numFactors = initialFactors;
-          self.statusCalResult("");
+          self.statusCalResult(null);
+          self.zBedProbePointStatus.removeAll();
+          self.checkZProbeRepeatabilityResult(null);
+          self.checkZProbeRepeatabilityStatus.removeAll();
 
           firmware = "Repetier";
           // here's where we begin to accumulate the data needed to run the actual calculations.
@@ -529,6 +536,7 @@ $(function () {
           // kick off the first probe!
           self.probeCount = 0;
           self.probingActive = true;
+          self.checkZProbeRepeatabilityActive = false;
           self.control.sendCustomCommand({ command: "G28" }); // home first!
           // build it all right now.
           var strCommandBuffer = [];
@@ -695,7 +703,12 @@ $(function () {
           var infoStr = "Calibrated " + numFactors + " factors using " + numPoints + " points, deviation before " + oldDeviation
           + " after, " + newDeviation;
           console.log(infoStr);
-          self.statusCalResult(infoStr);
+          self.statusCalResult({
+            numFactors: numFactors,
+            numPoints: numPoints,
+            oldDeviation: oldDeviation,
+            newDeviation: newDeviation
+          });
         }
 
         ////////////////////////////////////////////////////////////////////////
@@ -773,7 +786,7 @@ $(function () {
                   description: match[4]
 
                 });
-                console.log("Desc: " + line);
+                //console.log("Desc: " + line);
               }
               if (self.sentM114) {
                 if (line.includes("X") && line.includes("Y") && line.includes("Z") && line.includes("E")) {
@@ -781,20 +794,20 @@ $(function () {
                   self.statusMessage(self.statusMessage() + "M114 Result: " + line);
                   self.sentM114 = false;
                 }
-              } 
-              var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):(\d+.\d+).*/;
+              }
+
+              // delta least-squares calibration
               if (self.probingActive && zProbeRegex.test(line)) {
                 var zCoord = parseFloat(line.replace(zProbeRegex, "$2"));
                 if (!self.isSeeMeCNCPrinter()) {
                   zCoord -= zProbeBedDistance;
                 }
-                var probeStatus = "Probe #" + parseInt(self.probeCount + 1) + " value: " + zCoord.toFixed(3);
-                self.statusMessage(Array(self.probeCount + 2).join("*") + " [" + probeStatus + "]");
-                console.log(probeStatus);
-                
-                
-                
-                
+                self.zBedProbePointStatus.push({ 
+                    probe: (self.probeCount + 1),
+                    zCoord: zCoord.toFixed(3),
+                    xCoord: xBedProbePoints[self.probeCount],
+                    yCoord: yBedProbePoints[self.probeCount]
+                });
                 
                 zBedProbePoints[self.probeCount] = -zCoord;
                 self.probeCount++;
@@ -802,20 +815,22 @@ $(function () {
                   startDeltaCalcEngine();  // doooo eeeeeeet!
                 }
               }
+              
+              // checkZProbeRepeatability
               if (self.checkZProbeRepeatabilityActive && zProbeRegex.test(line)) {
                 var zCoord = parseFloat(line.replace(zProbeRegex, "$2"));
                 if (!self.isSeeMeCNCPrinter()) {
                   zCoord -= zProbeBedDistance;
                 }
-                var probeStatus = "Probe #" + parseInt(self.checkZProbeRepeatabilityCount + 1) + " value: " + zCoord.toFixed(3);
-                self.statusZProbeRepeatability(Array(self.checkZProbeRepeatabilityCount + 2).join("*") + " [" + probeStatus + "]");
-                console.log(probeStatus);
+                self.checkZProbeRepeatabilityStatus.push({ 
+                    probe: (self.checkZProbeRepeatabilityCount + 1),
+                    zCoord: zCoord.toFixed(3)
+                });
                 zProbeRepeatabilityResult[self.checkZProbeRepeatabilityCount] = zCoord;
                 self.checkZProbeRepeatabilityCount++;
                 if (self.checkZProbeRepeatabilityCount == self.checkZProbeRepeatabilityCountOption()) {
                   var min, max;
                   for (var i = 0; i < zProbeRepeatabilityResult.length; i++) {
-                    console.log("zProbeRepeatabilityResult["+i+"]="+zProbeRepeatabilityResult[i]);
                     if (i == 0) {
                       min = zProbeRepeatabilityResult[i];
                       max = zProbeRepeatabilityResult[i];
@@ -826,7 +841,11 @@ $(function () {
                   }
                   self.checkZProbeRepeatabilityCount = 0;
                   self.checkZProbeRepeatabilityActive = false;
-                  self.statusZProbeRepeatability((max - min).toFixed(3) + " (max=" + max.toFixed(3) + ", min=" + min.toFixed(3) + ')');
+                  self.checkZProbeRepeatabilityResult({
+                    maxDeviation: (max - min).toFixed(3),
+                    max: max.toFixed(3),
+                    min: min.toFixed(3)
+                  });
                 }
               }
             });
@@ -897,7 +916,12 @@ $(function () {
         self.checkZProbeRepeatability = function () {
           console.log("checkZProbeRepeatability (" + self.checkZProbeRepeatabilityCountOption() + " times)");
           setParameters();
+          self.probingActive = false;
           self.checkZProbeRepeatabilityActive = true;
+          self.checkZProbeRepeatabilityStatus.removeAll();
+          self.checkZProbeRepeatabilityResult(null);
+          self.zBedProbePointStatus.removeAll();
+          self.statusCalResult(null);
           self.control.sendCustomCommand({ command: "G28" });
           var strCommandBuffer = [];
           for (var i = 0; i < self.checkZProbeRepeatabilityCountOption(); i++) {
