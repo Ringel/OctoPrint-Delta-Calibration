@@ -11,6 +11,8 @@ code in this plugin is the same code that can be found behind his website, here:
 [Delta printer least-squares calibration calculator](http://www.escher3d.com/pages/wizards/wizarddelta.php). His calibration routines are also found
 in the dc42 fork of RepRapFirmware for the Duet controller.
 
+For now, the plugin ist fixed to 6-factors-calibration (endstop corrections, delta radius, and two tower angular position corrections) by measuring 10 points.
+
 # Getting Started
 
 ## Disclaimer
