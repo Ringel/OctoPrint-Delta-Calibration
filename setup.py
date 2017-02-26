@@ -14,20 +14,20 @@ plugin_package = "delta_cal"
 plugin_name = "Delta-Auto-Calibration"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "0.1.4"
+plugin_version = "0.1.5"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
-plugin_description = """Delta Auto-Calibration for SeeMeCNC Delta Printers - 25Dec16"""
+plugin_description = """Least-Squares Delta Auto-Calibration"""
 
 # The plugin's author. Can be overwritten within OctoPrint's internal data via __plugin_author__ in the plugin module
-plugin_author = "Gene Buckle"
+plugin_author = "Marc Ponschab, based on work of Gene Buckle"
 
 # The plugin's author's mail address.
-plugin_author_email = "geneb@deltasoft.com"
+plugin_author_email = "marc@ponschab.de"
 
 # The plugin's homepage URL. Can be overwritten within OctoPrint's internal data via __plugin_url__ in the plugin module
-plugin_url = "https://github.com/geneb/OctoPrint-Delta-Calibration"
+plugin_url = "https://github.com/ponschab/OctoPrint-Delta-Calibration/tree/stock-repetier"
 
 # The plugin's license. Can be overwritten within OctoPrint's internal data via __plugin_license__ in the plugin module
 plugin_license = "AGPLv3"
