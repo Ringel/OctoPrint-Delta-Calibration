@@ -846,6 +846,7 @@ $(function () {
                     max: max.toFixed(3),
                     min: min.toFixed(3)
                   });
+                  zProbeRepeatabilityResult = [];
                 }
               }
             });
