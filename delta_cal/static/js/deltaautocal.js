@@ -802,7 +802,7 @@ $(function () {
                 if (!self.isSeeMeCNCPrinter()) {
                   zCoord -= zProbeBedDistance;
                 }
-                self.zBedProbePointStatus.push({ 
+                self.zBedProbePointStatus.unshift({ 
                     probe: (self.probeCount + 1),
                     zCoord: zCoord.toFixed(3),
                     xCoord: xBedProbePoints[self.probeCount],
@@ -822,7 +822,7 @@ $(function () {
                 if (!self.isSeeMeCNCPrinter()) {
                   zCoord -= zProbeBedDistance;
                 }
-                self.checkZProbeRepeatabilityStatus.push({ 
+                self.checkZProbeRepeatabilityStatus.unshift({ 
                     probe: (self.checkZProbeRepeatabilityCount + 1),
                     zCoord: zCoord.toFixed(3)
                 });
