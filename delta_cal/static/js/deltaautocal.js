@@ -50,7 +50,7 @@ $(function () {
         var oldDeviation = 0.0;
         var newDeviation = 0.0;
         
-        var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):(\d+.\d+).*/; // SeeMeCNC and stock Repetier
+        var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):([+-]?\d+(\.\d+)).*/; // SeeMeCNC and stock Repetier
 
         // dc42 code
         var initialPoints = 10; // Was 7.  If I'd wanted it changed, I would have changed it myself!
