@@ -11,18 +11,20 @@ $(function () {
         const SMC_ERIS = 3;
         const SMC_MAX_V3 = 5;
         const SMC_H2 = 6;
-        const DEFAULT_PROBE_HEIGHT = 25;
+        const DEFAULT_PROBE_HEIGHT = 15;
 
         self.machineType = 0;
 
         self.firmwareRegEx = /FIRMWARE_NAME:([^\s]+)/i;
         self.repetierRegEx = /Repetier_([^\s]*)/i;
+		self.marlinRegEx = /Marlin([^\s]*)/i;
 
         self.eepromDataRegEx = /EPR:(\d+) (\d+) ([^\s]+) (.+)/;
 
         // this creates functions that can be set here in code and can be referenced
         // externally via the jinja2 file.
         self.isRepetierFirmware = ko.observable(false);
+        self.isMarlinFirmware = ko.observable(false);
         self.isSeeMeCNCPrinter = ko.observable(false);
         self.isEepromLoaded = ko.observable(false);
 
@@ -50,7 +52,8 @@ $(function () {
         var oldDeviation = 0.0;
         var newDeviation = 0.0;
         
-        var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):([+-]?\d+(\.\d+)).*/; // SeeMeCNC and stock Repetier
+//        var zProbeRegex = /.*(PROBE-ZOFFSET|Z-probe):([+-]?\d+(\.\d+)).*/; // SeeMeCNC and stock Repetier
+        var zProbeRegex = /.*(Bed X).*Z: ([+-]?\d+(\.\d+)).*/; // SeeMeCNC and stock Repetier
 
         // dc42 code
         var initialPoints = 10; // Was 7.  If I'd wanted it changed, I would have changed it myself!
@@ -61,6 +64,7 @@ $(function () {
         var bedRadius;
         var numPoints, numFactors;
         var normalise = true; // default from the webpage
+		//var normalise = false;
         var xBedProbePoints = [];
         var yBedProbePoints = [];
         var zBedProbePoints = [];
@@ -309,15 +313,15 @@ $(function () {
           var oldCarriageHeightA = this.homedCarriageHeight + this.xstop;	// save for later
 
           // Update endstop adjustments
-          this.xstop += v[0];
-          this.ystop += v[1];
-          this.zstop += v[2];
+			this.xstop += v[0];
+			this.ystop += v[1];
+			this.zstop += v[2];
           if (norm) {
             this.NormaliseEndstopAdjustments();
           }
 
           if (numFactors >= 4) {
-            this.radius += v[3];
+				this.radius += v[3];
 
             if (numFactors >= 6) {
               this.xadj += v[4];
@@ -334,8 +338,15 @@ $(function () {
           // Adjusting the diagonal and the tower positions affects the homed carriage height.
           // We need to adjust homedHeight to allow for this, to get the change that was requested in the endstop corrections.
           var heightError = this.homedCarriageHeight + this.xstop - oldCarriageHeightA - v[0];
-          this.homedHeight -= heightError;
-          this.homedCarriageHeight -= heightError;
+		  if (normalise) {
+			this.homedHeight -= heightError;
+			this.homedCarriageHeight -= heightError;
+		  } else {
+		    this.xstop -= heightError;
+		    this.ystop -= heightError;
+		    this.zstop -= heightError;
+		  }
+			
         }
 
         function PrintVector(label, v) {
@@ -449,17 +460,17 @@ $(function () {
                 break;
 
               case "893":   // X Endstop offset
-                oldXStop = parseInt(data.value);
+                oldXStop = parseFloat(data.value);
                 console.log("Starting X Endstop offset: " + oldXStop);
                 break;
 
               case "895":   // Y Endstop offset
-                oldYStop = parseInt(data.value);
+                oldYStop = parseFloat(data.value);
                 console.log("Starting Y Endstop offset: " + oldYStop);
                 break;
 
               case "897":   // Z Endstop offset
-                oldZStop = parseInt(data.value);
+                oldZStop = parseFloat(data.value);
                 console.log("Starting Z Endstop offset: " + oldZStop);
                 break;
 
@@ -529,6 +540,9 @@ $(function () {
           self.checkZProbeRepeatabilityStatus.removeAll();
 
           firmware = "Repetier";
+		  if (self.isMarlinFirmware())
+			firmware = "Marlin"
+			
           // here's where we begin to accumulate the data needed to run the actual calculations.
           setParameters();  // develops our probing points.
           convertIncomingEndstops();
@@ -540,7 +554,7 @@ $(function () {
           self.control.sendCustomCommand({ command: "G28" }); // home first!
           // build it all right now.
           var strCommandBuffer = [];
-          var probeHeight = self.isSeeMeCNCPrinter() ? DEFAULT_PROBE_HEIGHT : zProbeBedDistance;
+          var probeHeight = self.isSeeMeCNCPrinter() ||self.isMarlinFirmware() ? DEFAULT_PROBE_HEIGHT : zProbeBedDistance;
           for(var x = 0; x < numPoints; x++) {
             strCommandBuffer.push("G0 X"  + xBedProbePoints[x] + " Y" + yBedProbePoints[x] + " Z" + probeHeight + " F6500");
             strCommandBuffer.push("G30");
@@ -565,35 +579,49 @@ $(function () {
               var newDiagonal = deltaParams.diagonal.toFixed(2);
               var newRadius = deltaParams.radius.toFixed(2);
               var newHomedHeight = deltaParams.homedHeight.toFixed(2);
+			  console.log("========================================")
 
-              console.log("========================================")
-              self.saveEEPROMData(1, "893", newXStop);
-              console.log("X Stop offset is " + newXStop + " steps.");
-              self.saveEEPROMData(1, "895", newYStop);
-              console.log("Y Stop offset is " + newYStop + " steps.");
-              self.saveEEPROMData(1, "897", newZStop);
-              console.log("Z Stop offset is " + newZStop + " steps.");
+			  if (self.isMarlinFirmware()){
+			      var cmdM666 = "M666 X" + deltaParams.xstop.toFixed(2) + " Y" + deltaParams.ystop.toFixed(2) + " Z" + deltaParams.zstop.toFixed(2)
+				  console.log("=== Stop offset: " + cmdM666);
+				  self.control.sendCustomCommand({ command: cmdM666 });
+				  console.log("=== Corrected Alpha A(210) " + (newXPos) + " B(330) " + (newYPos) + " C(90) " + (newZPos) + ".");
+				  console.log("=== Diagonal Rod: M665 L" +  newDiagonal + " Radius: R"  + newRadius + " H" + newHomedHeight + " X"+newXPos + " Y"+newYPos + " Z"+newZPos );
+				  self.control.sendCustomCommand({ command: "M665 L" + newDiagonal + " R" + newRadius + " H"+newHomedHeight + " X"+newXPos + " Y"+newYPos + " Z"+newZPos  });
+  				  self.control.sendCustomCommand({ command: "M500" });
+				  self.statusMessage("Success, changes written to EEPROM.");
+				  self.control.sendCustomCommand({ command: "G28" });
 
-              self.saveEEPROMData(3, "901", (210 + parseFloat(newXPos)));
-              console.log("Corrected Alpha A(210) to " + (210 + parseFloat(newXPos)) + ".");
-              self.saveEEPROMData(3, "905", (330 + parseFloat(newYPos)));
-              console.log("Corrected Alpha B(330) to " + (330 + parseFloat(newYPos)) + ".");
-              self.saveEEPROMData(3, "909", (90 + parseFloat(newZPos)));
-              console.log("Corrected Alpha C(90) to  " + (90 + parseFloat(newZPos)) + ".");
+			  }
+			  else{			  
+				  self.saveEEPROMData(1, "893", newXStop);
+				  console.log("X Stop offset is " + newXStop + " steps.");
+				  self.saveEEPROMData(1, "895", newYStop);
+				  console.log("Y Stop offset is " + newYStop + " steps.");
+				  self.saveEEPROMData(1, "897", newZStop);
+				  console.log("Z Stop offset is " + newZStop + " steps.");
+
+				  self.saveEEPROMData(3, "901", (210 + parseFloat(newXPos)));
+				  console.log("Corrected Alpha A(210) to " + (210 + parseFloat(newXPos)) + ".");
+				  self.saveEEPROMData(3, "905", (330 + parseFloat(newYPos)));
+				  console.log("Corrected Alpha B(330) to " + (330 + parseFloat(newYPos)) + ".");
+				  self.saveEEPROMData(3, "909", (90 + parseFloat(newZPos)));
+				  console.log("Corrected Alpha C(90) to  " + (90 + parseFloat(newZPos)) + ".");
 
 
-              self.saveEEPROMData(3, "881", newDiagonal);
-              console.log("Diagonal Rod: " + newDiagonal);
-              self.saveEEPROMData(3, "885", newRadius);
-              console.log("Horizontal Radius: " + newRadius);
-              self.saveEEPROMData(3, "153", newHomedHeight);
-              console.log("Max Z Height is now: " + newHomedHeight);
+				  self.saveEEPROMData(3, "881", newDiagonal);
+				  console.log("Diagonal Rod: " + newDiagonal);
+				  self.saveEEPROMData(3, "885", newRadius);
+				  console.log("Horizontal Radius: " + newRadius);
+				  self.saveEEPROMData(3, "153", newHomedHeight);
+				  console.log("Max Z Height is now: " + newHomedHeight);
 
-              self.control.sendCustomCommand({ command: "M500" });
-              self.statusMessage("Success, changes written to EEPROM.");
-              self.control.sendCustomCommand({ command: "G28" });
-              console.log(self.statusMessage());
-              self.isEepromLoaded(false);
+				  self.control.sendCustomCommand({ command: "M500" });
+				  self.statusMessage("Success, changes written to EEPROM.");
+				  self.control.sendCustomCommand({ command: "G28" });
+				  console.log(self.statusMessage());
+				  self.isEepromLoaded(false);
+				}
             }else{
               self.statusMessage("New calibration is not measureably better than the old - keeping the old calibration");
             }
@@ -717,7 +745,7 @@ $(function () {
 
         self.onStartup = function () {
           $('#settings_plugin_delta_cal_link a').on('show', function (e) {
-            if (self.isConnected() && !self.isRepetierFirmware())
+            if (self.isConnected() && !self.isRepetierFirmware()&& !self.isMarlinFirmware())
               self._requestFirmwareInfo();
           });
           self.statusMessage("");
@@ -729,16 +757,25 @@ $(function () {
             if (match != null) {
               if (self.repetierRegEx.exec(match[0]))
                 self.isRepetierFirmware(true);
+				
+              if (self.marlinRegEx.exec(match[0]))
+                self.isMarlinFirmware(true);
             }
           });
         };
 
         self.fromCurrentData = function (data) {
-          if (!self.isRepetierFirmware()) {
+          if (!self.isRepetierFirmware() && !self.isMarlinFirmware()) {
             _.each(data.logs, function (line) {
               var match = self.firmwareRegEx.exec(line);
               if (match) {
                 console.log("Firmware: " + line);
+				if (self.marlinRegEx.exec(match[0])) {
+				  self.isMarlinFirmware(true);
+                  self.isRepetierFirmware(false);
+                  self.isSeeMeCNCPrinter(false);
+                }
+				
                 if (self.repetierRegEx.exec(match[0])) {
                   self.isRepetierFirmware(true);
                   self.isSeeMeCNCPrinter(false); //.. unless otherwise!
@@ -786,8 +823,39 @@ $(function () {
                   description: match[4]
 
                 });
+								
                 //console.log("Desc: " + line);
               }
+			  
+			  var match = /M851 Z([0-9.-]+)/.exec(line)
+			  if (match){			  
+				self.eepromData.push({position: "929", value: (-1 * parseFloat(match[1]))});
+			  }
+			  
+			  var match = /M92 X([0-9.]+) .+/.exec(line)
+			  if (match){			  
+				self.eepromData.push({position: "11", value: match[1]});
+			  }
+			  var match = /M666 X([0-9.-]+) Y([0-9.-]+) Z([0-9.-]+)/.exec(line)
+			  if (match){			  
+				self.eepromData.push({position: "893", value: match[1]});
+				self.eepromData.push({position: "895", value: match[2]});
+				self.eepromData.push({position: "897", value: match[3]});
+			  }
+				
+			  var match = /M665 L([0-9.-]+) R([0-9.-]+) H([0-9.-]+) S([0-9.-]+) B([0-9.-]+) X([0-9.-]+) Y([0-9.-]+) Z([0-9.-]+)/.exec(line)
+			  if (match){	
+				self.eepromData.push({position: "881", value: match[1]});
+				self.eepromData.push({position: "885", value: match[2]});
+				self.eepromData.push({position: "901", value: parseFloat(match[6])+210}); // Rotation?
+				self.eepromData.push({position: "905", value: parseFloat(match[7])+330});
+				self.eepromData.push({position: "909", value: parseFloat(match[8])+90});
+				
+				self.eepromData.push({position: "925", value: parseFloat(match[5])*1.1}); // Radius - todo - woher?			
+				self.eepromData.push({position: "153", value: match[3]}); // Height - todo - woher?			
+				
+			  }				
+				
               if (self.sentM114) {
                 if (line.includes("X") && line.includes("Y") && line.includes("Z") && line.includes("E")) {
                   // we've got the result of an M114 here.
@@ -799,9 +867,14 @@ $(function () {
               // delta least-squares calibration
               if (self.probingActive && zProbeRegex.test(line)) {
                 var zCoord = parseFloat(line.replace(zProbeRegex, "$2"));
-                if (!self.isSeeMeCNCPrinter()) {
+				if (!self.isSeeMeCNCPrinter()) {
                   zCoord -= zProbeBedDistance;
                 }
+				
+				if (self.isMarlinFirmware()) {
+					zCoord = zCoord * -1
+				}
+				
                 self.zBedProbePointStatus.unshift({ 
                     probe: (self.probeCount + 1),
                     zCoord: zCoord.toFixed(3),
@@ -822,6 +895,9 @@ $(function () {
                 if (!self.isSeeMeCNCPrinter()) {
                   zCoord -= zProbeBedDistance;
                 }
+				if (self.isMarlinFirmware()) {
+					zCoord = zCoord * -1
+				}
                 self.checkZProbeRepeatabilityStatus.unshift({ 
                     probe: (self.checkZProbeRepeatabilityCount + 1),
                     zCoord: zCoord.toFixed(3)
@@ -864,6 +940,7 @@ $(function () {
 
         self.onEventDisconnected = function () {
           self.isRepetierFirmware(false);
+		  self.isMarlinFirmware(false);
         };
 
         // function requestEepromData() {
@@ -900,7 +977,10 @@ $(function () {
         };
 
         self.readEEPROMData = function () {
-          self.control.sendCustomCommand({ command: "M205" });
+		  if (self.isMarlinFirmware())
+			self.control.sendCustomCommand({ command: "M503 S0" });
+		  else
+            self.control.sendCustomCommand({ command: "M205" });
         }
         // self._requestsaveEEPROMData = function (data_type, position, value) {
         //   var cmd = "M206 T" + data_type + " P" + position;

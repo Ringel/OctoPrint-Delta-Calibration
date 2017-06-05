@@ -1,15 +1,15 @@
 This is a plugin for the 3D printer host software [OctoPrint](http://www.octoprint.org), designed to accurately calibrate delta printers.
 
 # About
-This version is a expermimental modification of Gene Buckle's ["OctoPrint-Delta-Calibration Plugin"](https://github.com/geneb/OctoPrint-Delta-Calibration), which was initially designed for the RAMBo and Mini-Rambo based line of delta printers manufactured by SeeMeCNC.
+This plugin is forked from the Delta Auto Calibration plugin which is dedicated for delta printers manufactured by SeeMeCNC (http://www.seemecnc.com) to support original Repetier and Marlin firmware.
 
-As of now, it also works well with stock [Repetier Firmware](https://github.com/repetier/Repetier-Firmware), at least on my printer. Theoretically, it should work on any delta printer running an up-to-date [Repetier Firmware](https://github.com/repetier/Repetier-Firmware).
-
-The "brains" behind this calibration plugin were graciously supplied by David Crocker (dc42).
-David's "least squares" calibration algorithm is so good that it's essentially magic. The calibration
-code in this plugin is the same code that can be found behind his website, here: 
-[Delta printer least-squares calibration calculator](http://www.escher3d.com/pages/wizards/wizarddelta.php). His calibration routines are also found
-in the dc42 fork of RepRapFirmware for the Duet controller.
+## Credits:
+- David Crocker (dc42) with his "least squares" calibration algorithm:
+http://www.escher3d.com/pages/wizards/wizarddelta.php
+- Gene Buckle (geneb) with his original plugin:
+https://github.com/geneb/OctoPrint-Delta-Calibration
+- Marc Ponschab (ponschab) with his Delta Calibration plugin for Repetier:
+https://github.com/ponschab/OctoPrint-Delta-Calibration
 
 For now, the plugin ist fixed to 6-factors-calibration (endstop corrections, delta radius, and two tower angular position corrections) by measuring 10 points.
 
@@ -25,10 +25,9 @@ For now, the plugin ist fixed to 6-factors-calibration (endstop corrections, del
 You need a working Z-Probe.
 
 This plugin uses G30 for probing the print bed. So, when G30 is working, there is a good chance that the plugin works too.
-If you are not shure, read Repetier's site on [Z-Probing with Repetier-Firmware](https://www.repetier.com/documentation/repetier-firmware/z-probing/).
 
 ### Firmware
-You must also be running an up-to-date version of Repetier Firmware.
+* Marlin Firmware Version 1.1.1
 * Stock Repetier: Version 0.92.8 and up. I'm using 1.0.0-dev.
 * SeeMeCNC's fork of Repetier Firmware with a firmware date of 20161209 or later. (Issue an M115 to see the firmware date, ex.: FIRMWARE_NAME:Repetier_0.92.2 FIRMWARE_DATE:20161209 MACHINE_TYPE:Rostock MAX v3)
 
@@ -38,16 +37,16 @@ To use this plugin, you can install it either:
 
 ### Using the OctoPrint Plugin Manager
 
-Click on the Settings link in OctoPrint and then click on the "Plugin Manager" link that's listed in the Plugins pane on the lower left. Then click the "Get More..." button, enter the URL https://github.com/ponschab/OctoPrint-Delta-Calibration/archive/stock-repetier.zip and finally click the "Install" button.
+Click on the Settings link in OctoPrint and then click on the "Plugin Manager" link that's listed in the Plugins pane on the lower left. Then click the "Get More..." button, enter the URL https://github.com/ringel/OctoPrint-Delta-Calibration/archive/marlin-1.1.1.zip and finally click the "Install" button.
 
 ### Using pip from a shell prompt
 
-    pip install https://github.com/ponschab/OctoPrint-Delta-Calibration/archive/stock-repetier.zip
+    pip install https://github.com/ringel/OctoPrint-Delta-Calibration/archive/marlin-1.1.1.zip
 
 If you're working with an OctoPi distribution, you can sign into the "pi" account and
 install the plugin this way:
 
-    /home/pi/oprint/bin/pip install https://github.com/ponschab/OctoPrint-Delta-Calibration/archive/stock-repetier.zip
+    /home/pi/oprint/bin/pip install https://github.com/ringel/OctoPrint-Delta-Calibration/archive/marlin-1.1.1.zip
 
 ## Do it!
 Before running this utility on your printer, you should issue a G29 command via the OctoPrint
@@ -68,6 +67,7 @@ There's also an additional button 'Check Z-Probe Repeatability', which runs mult
 If you encounter any issues, don't hesitate to create an issue.
 
 # Thanks
+* Marc Ponschab. For the Repetier version - only minor adjustments needed to implement Marlin.
 * Gene Buckle. For the great plugin and for releasing it unter the [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.html) License.
 * Ryan Rittenhouse, SeeMeCNC's new cat herder (software developer). If it wasn't for his valuable assistance, this plugin simply wouldn't have worked right for a very long time.
 * David Crocker (dc42). For his ingenious calibration algorithm and for giving it to the community.

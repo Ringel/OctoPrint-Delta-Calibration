@@ -13,18 +13,19 @@ Status: <span style="color: green" data-bind="visible: isConnected()">connected.
 <span data-bind="visible: isConnected() && isSeeMeCNCPrinter()">
     Your machine is a SeeMeCNC <span data-bind="text: printerType"></span> 3D printer.
 </span>
-<span data-bind="visible: isConnected() && !isSeeMeCNCPrinter()">
-    Your machine is <span style="color: red">not</span> a SeeMeCNC 3D printer.
+<span data-bind="visible: isConnected() && isMarlinFirmware()">
+    Your machine has a Marlin Firmware.
 </span>
 <br>
 <br>
 
 <form class="form-horizontal">
-    <button data-bind="enable: isRepetierFirmware, click: loadEEProm" class="btn">{{ _('Load EEprom') }}</button>
+    <button data-bind="enable: isMarlinFirmware, visible: isMarlinFirmware, click: loadEEProm" class="btn">{{ _('Load Marlin EEprom') }}</button>
+    <button data-bind="enable: isRepetierFirmware, visible: isRepetierFirmware, click: loadEEProm" class="btn">{{ _('Load Repetier EEprom') }}</button>
     <button data-bind="enable: isRepetierFirmware && isConnected && isEepromLoaded, click: beginDeltaCal" class="btn btn-primary">{{ _('Begin Delta Calibration') }}</button>
     <div class="btn-group input-append">
-        <button type="submit" data-bind="click: checkZProbeRepeatability, enable: isRepetierFirmware && isConnected && isEepromLoaded" class="btn">{{ _('Check Z-Probe Repeatability') }}</button>
-        <input type="number" class="input-mini text-right" data-bind="value: checkZProbeRepeatabilityCountOption, enable: isRepetierFirmware && isConnected && isEepromLoaded">
+        <button type="submit" data-bind="click: checkZProbeRepeatability, enable: (isRepetierFirmware || isMarlinFirmware) && isConnected && isEepromLoaded" class="btn">{{ _('Check Z-Probe Repeatability') }}</button>
+        <input type="number" class="input-mini text-right" data-bind="value: checkZProbeRepeatabilityCountOption, enable: (isRepetierFirmware || isMarlinFirmware) && isConnected && isEepromLoaded">
         <span class="add-on">probes</span>
     </div>
 </form>

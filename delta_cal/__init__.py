@@ -27,12 +27,12 @@ class DeltaCalPlugin(octoprint.plugin.AssetPlugin,
 
                 # version check: github repository
                 type="github_release",
-                user="ponschab",
+                user="ringel",
                 repo="OctoPrint-Delta-Calibration",
                 current=self._plugin_version,
 
                 # update method: pip
-                pip="https://github.com/ponschab/OctoPrint-Delta-Calibration/archive/{target_version}.zip"
+                pip="https://github.com/ringel/OctoPrint-Delta-Calibration/archive/{target_version}.zip"
             )
         )
 
