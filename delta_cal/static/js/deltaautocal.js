@@ -829,7 +829,8 @@ $(function () {
 			  
 			  var match = /M851 Z([0-9.-]+)/.exec(line)
 			  if (match){			  
-				self.eepromData.push({position: "929", value: (-1 * parseFloat(match[1]))});
+				//self.eepromData.push({position: "929", value: (-1 * parseFloat(match[1]))});
+				self.eepromData.push({position: "929", value:  0});
 			  }
 			  
 			  var match = /M92 X([0-9.]+) .+/.exec(line)
@@ -851,8 +852,8 @@ $(function () {
 				self.eepromData.push({position: "905", value: parseFloat(match[7])+330});
 				self.eepromData.push({position: "909", value: parseFloat(match[8])+90});
 				
-				self.eepromData.push({position: "925", value: parseFloat(match[5])*1.1}); // Radius - todo - woher?			
-				self.eepromData.push({position: "153", value: match[3]}); // Height - todo - woher?			
+				self.eepromData.push({position: "925", value: parseFloat(match[5])*1.1}); // Radius		
+				self.eepromData.push({position: "153", value: match[3]}); // Height			
 				
 			  }				
 				
